@@ -22,11 +22,6 @@
             "name": "azureBackend",
             "displayName": "Azure Terraform Backend Settings",
             "isExpanded": true
-        },
-        {
-            "name": "advanced",
-            "displayName": "Advanced",
-            "isExpanded": false
         }
     ],
     "inputs": [
@@ -118,15 +113,6 @@
             "groupName": "azureBackend",
             "visibleRule": "useAzureTerraformBackend = true",
             "helpMarkDown": "The name of the remote state file to use."
-        },
-        {
-            "name": "installTerraform",
-            "type": "boolean",
-            "label": "Install Terraform?",
-            "defaultValue": false,
-            "required": false,
-            "helpMarkDown": "If checked, the task will install an appropriate version of Terraform and add it to the build user's path.\nTo update the Terraform install, set the build variable *UPDATE_TERRAFORM_INSTALL* to a non-null value.",
-            "groupName": "advanced"
         }
     ],
     "dataSourceBindings": [

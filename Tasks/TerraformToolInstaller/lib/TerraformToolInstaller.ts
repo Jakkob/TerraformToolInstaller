@@ -2,18 +2,47 @@ import * as toolLib from 'vsts-task-tool-lib/tool';
 import * as taskLib from 'vsts-task-lib/task';
 import * as httpm from 'typed-rest-client/HttpClient';
 import * as path from 'path';
-import MachineCharacteristics from './MachineCharacteristics';
 import { HttpClientResponse } from 'typed-rest-client/HttpClient';
-import { OperatingSystem } from '../AzureTerraform/models/MachineCharacteristics';
+import { IRequestOptions } from 'typed-rest-client/Interfaces';
+
+import MachineCharacteristics from './MachineCharacteristics';
+import { OperatingSystem, ProcessorArchitecture } from './MachineCharacteristics';
 
 // I got most of this code for this from the "NodeTool" task in the `vsts-tasks` repo on GitHub: 
 //     https://github.com/Microsoft/vsts-tasks/tree/master/Tasks/NodeTool
 
+// Response body schema for the Terraform version data request.
+interface Build {
+	name: string;
+	version: string;
+	os: OperatingSystem;
+	arch: ProcessorArchitecture;
+	filename: string;
+	url: string;
+}
+interface TerraformVersionData {
+	name: string;
+	version: string;
+	shasums: string;
+	shasums_signature: string;
+	builds: Build[];
+}
+
+// Set a 5-second timeout for most requests.
+const requestOptions: IRequestOptions = {
+    socketTimeout: 5000
+}
+
 export default class TerraformToolInstaller {
-    private mc: MachineCharacteristics;
+    private readonly toolName: string = 'terraform';
+
+    private readonly osPlat: OperatingSystem;
+    private readonly osArch: ProcessorArchitecture;
 
     constructor() {
-        this.mc = new MachineCharacteristics();
+        let mc = new MachineCharacteristics();
+        this.osPlat = mc.OperatingSystem;
+        this.osArch = mc.ProcessorArchitecture;
     }
 
     //
@@ -40,7 +69,7 @@ export default class TerraformToolInstaller {
         // check cache
         let toolPath: string;
         if (!checkLatest) {
-            toolPath = toolLib.findLocalTool('terraform', versionSpec);
+            toolPath = toolLib.findLocalTool(this.toolName, versionSpec);
         }
 
         if (!toolPath) {
@@ -51,28 +80,19 @@ export default class TerraformToolInstaller {
             }
             else {
                 // query the Hashicorp Releases API for a matching version
-                version = await queryLatestMatch(versionSpec);
+                version = await this.queryLatestMatch(versionSpec);
                 if (!version) {
-                    throw new Error(`Unable to find Terraform version '${versionSpec}' for platform ${osPlat} and architecture ${osArch}.`);
+                    throw new Error(`Unable to find a Terraform version '${versionSpec}' for platform [${this.osPlat}] and architecture [${this.osArch}].`);
                 }
 
                 // check cache
-                toolPath = toolLib.findLocalTool('terraform', version)
+                toolPath = toolLib.findLocalTool(this.toolName, version)
             }
 
             if (!toolPath) {
                 // download, extract, cache
-                toolPath = await acquireTerraform(version);
+                toolPath = await this.acquireTerraform(version);
             }
-        }
-
-        //
-        // a tool installer initimately knows details about the layout of that tool
-        // for example, node binary is in the bin folder after the extract on Mac/Linux.
-        // layouts could change by version, by platform etc... but that's the tool installers job
-        //
-        if (this.mc.OperatingSystem != OperatingSystem.Windows) {
-            toolPath = path.join(toolPath, 'bin');
         }
 
         //
@@ -81,19 +101,10 @@ export default class TerraformToolInstaller {
         toolLib.prependPath(toolPath);
     }
 
-    async function queryLatestMatch(versionSpec: string): Promise<string> {
-        // node offers a json list of versions
-        let dataFileName: string;
-        switch (this.osPlat) {
-            case "linux": dataFileName = "linux-" + this.osArch; break;
-            case "darwin": dataFileName = "osx-" + this.osArch + '-tar'; break;
-            case "win32": dataFileName = "win-" + this.osArch + '-exe'; break;
-            default: throw new Error(`Unexpected OS '${this.osPlat}'`);
-        }
-
+    private async queryLatestMatch(versionSpec: string): Promise<string> {
         let versions: string[] = [];
         let dataUrl = "https://releases.hashicorp.com/terraform/index.json";
-        let client: httpm.HttpClient = new httpm.HttpClient('vsts-node-tool');
+        let client: httpm.HttpClient = new httpm.HttpClient('vsts-node-tool', null, requestOptions);
         let resp: HttpClientResponse = await client.get(dataUrl);
         let body: any = JSON.parse(await resp.readBody());
         
@@ -104,22 +115,32 @@ export default class TerraformToolInstaller {
         return version;
     }
 
-    async function acquireTerraform(version: string): Promise<string> {
+    private async acquireTerraform(version: string): Promise<string> {
         //
         // Download - a tool installer intimately knows how to get the tool (and construct urls)
         //
         version = toolLib.cleanVersion(version);
-        
-        let stem = 'https://releases.hashicorp.com/terraform/' + version + '/terraform_' + version + '_';        
-        let downloadUrl = stem + this.mc.OperatingSystem + '_' + this.mc.ProcessorArchitecture + '.zip'
+        let buildsUrl = "https://releases.hashicorp.com/terraform/" + version + "/index.json";
+        let client: httpm.HttpClient = new httpm.HttpClient('vsts-node-tool', null, requestOptions);
+        let resp: HttpClientResponse = await client.get(buildsUrl);
+        let body: TerraformVersionData = JSON.parse(await resp.readBody());
 
-        let downloadPath: string = await toolLib.downloadTool(downloadUrl);
+        let build: Build = body.builds.find((item: Build) => {
+            return item.os == this.osPlat && item.arch == this.osArch;
+        });
+
+        if(!build) {
+            throw new Error(`No Terraform build of version '${version}' for platform [${this.osPlat}] and architecture [${this.osArch}] was found!`)
+        }
+
+        let fileName: string = build.filename;
+        let downloadPath: string = await toolLib.downloadTool(build.url);
 
         //
         // Extract
         //
         let extPath: string;
-        if (this.osPlat == 'win32') {
+        if (this.osPlat == OperatingSystem.Windows) {
             taskLib.assertAgent('2.115.0');
             extPath = taskLib.getVariable('Agent.TempDirectory');
             if (!extPath) {
@@ -130,30 +151,13 @@ export default class TerraformToolInstaller {
             extPath = await toolLib.extract7z(downloadPath, extPath);
         }
         else {
-            extPath = await toolLib.extractTar(downloadPath);
+            extPath = await toolLib.extractZip(downloadPath);
         }
 
         //
         // Install into the local tool cache - node extracts with a root folder that matches the fileName downloaded
         //
         let toolRoot = path.join(extPath, fileName);
-        return await toolLib.cacheDir(toolRoot, 'node', version);
+        return await toolLib.cacheDir(toolRoot, this.toolName, version);
     }
-
-    // run();
-
-
-    async function getLatestTerraformVersion() {
-        let httpc: httpm.HttpClient = new httpm.HttpClient('vsts-node-api');
-        let versionsResponse: httpm.HttpClientResponse = await httpc.get('https://releases.hashicorp.com/terraform');
-
-        let versions: Array<string> = [];
-        let parser = cheerio.load(await versionsResponse.readBody());
-        parser('a').each((i, element) => {
-            let content: string = parser(element).text();
-            if(content.match(/terraform/) && !content.match(/rc|beta/))
-                versions.push(content);
-        });
-        return versions[0].replace('terraform_', '');
-    };
 }

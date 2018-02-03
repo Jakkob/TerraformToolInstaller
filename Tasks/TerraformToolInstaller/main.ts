@@ -1,5 +1,5 @@
 import * as taskLib from 'vsts-task-lib/task';
-import TerraformToolInstaller from './TerraformToolInstaller';
+import TerraformToolInstaller from './lib/TerraformToolInstaller';
 
 // I got most of this code for this from the "NodeTool" task in the `vsts-tasks` repo on GitHub: 
 //     https://github.com/Microsoft/vsts-tasks/tree/master/Tasks/NodeTool

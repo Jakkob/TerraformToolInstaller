@@ -1,8 +1,8 @@
 {
     "id": "27491c39-b4eb-453a-b1ad-c74d8048ba82",
-    "name": "TerraformTool",
+    "name": "terraform-tool-installer-task",
     "friendlyName": "Terraform Tool Installer",
-    "description": "Finds or Downloads and caches specified version spec of Hashicorp's Terraform and adds it to the PATH.",
+    "description": "Finds or Downloads and caches specified version spec of Hashicorp's Terraform tool and adds it to the PATH.",
     "helpMarkDown": "",
     "category": "Tool",
     "runsOn": [
@@ -37,8 +37,7 @@
     ],
     "execution": {
         "Node": {
-            "target": "main.js",
-            "argumentFormat": ""
+            "target": "main.js"
         }
     },
     "messages": {

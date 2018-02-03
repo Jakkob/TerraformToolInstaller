@@ -15,8 +15,6 @@ export default class TaskParameters {
     public containerName: string;
     public stateFileName: string;
 
-    public installTerraform: boolean;
-
     constructor() {
         try {
             this.workingDirectory = tl.getPathInput("workingDirectory", false);
@@ -32,7 +30,6 @@ export default class TaskParameters {
             this.terraformStateStorageAccount = tl.getInput("terraformStateStorageAccount");
             this.containerName = tl.getInput("containerName");
             this.stateFileName = tl.getInput("stateFileName");
-            this.installTerraform = tl.getBoolInput("installTerraform");
         }
         catch (error) {
             throw new Error(tl.loc("TaskConstructorFailed", error.message));
