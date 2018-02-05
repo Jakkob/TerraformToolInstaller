@@ -1,5 +1,5 @@
-import * as toolLib from 'vsts-task-tool-lib/tool';
 import * as taskLib from 'vsts-task-lib/task';
+import * as toolLib from 'vsts-task-tool-lib/tool';
 import * as httpm from 'typed-rest-client/HttpClient';
 import * as path from 'path';
 import { HttpClientResponse } from 'typed-rest-client/HttpClient';
@@ -139,25 +139,11 @@ export default class TerraformToolInstaller {
         //
         // Extract
         //
-        let extPath: string;
-        if (this.osPlat == OperatingSystem.Windows) {
-            taskLib.assertAgent('2.115.0');
-            extPath = taskLib.getVariable('Agent.TempDirectory');
-            if (!extPath) {
-                throw new Error('Expected Agent.TempDirectory to be set');
-            }
-
-            extPath = path.join(extPath, 'n'); // use as short a path as possible due to nested node_modules folders
-            extPath = await toolLib.extract7z(downloadPath, extPath);
-        }
-        else {
-            extPath = await toolLib.extractZip(downloadPath);
-        }
+        let extPath: string = await toolLib.extractZip(downloadPath);
 
         //
         // Install into the local tool cache - node extracts with a root folder that matches the fileName downloaded
         //
-        let toolRoot = path.join(extPath, fileName);
-        return await toolLib.cacheDir(toolRoot, this.toolName, version);
+        return await toolLib.cacheDir(extPath, this.toolName, version);
     }
 }

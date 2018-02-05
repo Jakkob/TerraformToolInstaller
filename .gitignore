@@ -34,7 +34,7 @@ _build/
 _download/
 _package/
 _test/
-_working/
+_work/
 
 # Roslyn cache directories
 *.ide/

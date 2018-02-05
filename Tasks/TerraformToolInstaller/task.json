@@ -1,5 +1,6 @@
 {
-    "id": "27491c39-b4eb-453a-b1ad-c74d8048ba82",
+    "$schema": "https://raw.githubusercontent.com/MicrosoftDocs/vsts-docs/live/docs/extend/develop/_shared/build-task-schema.json",
+    "id": "460ada82-b735-4225-8f6f-61536ae4d2a9",
     "name": "terraform-tool-installer-task",
     "friendlyName": "Terraform Tool Installer",
     "description": "Finds or Downloads and caches specified version spec of Hashicorp's Terraform tool and adds it to the PATH.",
@@ -7,13 +8,13 @@
     "category": "Tool",
     "runsOn": [
         "Agent",
-        "DeploymentGroup"
+        "MachineGroup"
     ],
     "author": "Jacob Cleaveland",
     "version": {
         "Major": 0,
-        "Minor": 1,
-        "Patch": 0
+        "Minor": 0,
+        "Patch": 1
     },
     "satisfies": ["Terraform"],
     "demands": [],

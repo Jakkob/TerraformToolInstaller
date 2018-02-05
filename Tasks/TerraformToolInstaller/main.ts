@@ -1,7 +1,8 @@
 import * as taskLib from 'vsts-task-lib/task';
 import TerraformToolInstaller from './lib/TerraformToolInstaller';
+import { read } from 'fs';
 
-// I got most of this code for this from the "NodeTool" task in the `vsts-tasks` repo on GitHub: 
+// I got a lot of this code for this from the "NodeTool" task in the `vsts-tasks` repo on GitHub: 
 //     https://github.com/Microsoft/vsts-tasks/tree/master/Tasks/NodeTool
 
 async function run() {
@@ -15,3 +16,6 @@ async function run() {
         taskLib.setResult(taskLib.TaskResult.Failed, error.message);
     }
 }
+
+// Run the task.
+run();
